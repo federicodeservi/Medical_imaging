@@ -44,8 +44,8 @@ nameFolds3(ismember(nameFolds3,{'.','..'})) = [];
 
 % final path
 path = strcat(pathMain2, '\', nameFolds3{1});
-
-pathAnn = strcat(root(1:51) , '\Annotation\',patID(9:end)) ;
+splitstring = split(root, '\Lung-PET-CT-Dx');
+pathAnn = strcat(splitstring{1} , '\Annotation\',patID(9:end)) ;
 
 filesxml = dir(fullfile(pathAnn, '*.xml'));
 sampleXML = filesxml(1).name;
