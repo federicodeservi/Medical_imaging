@@ -84,7 +84,7 @@ for n = 1:n_imgs
     %normalization
     min__ = min(min(image)); disp(min__);
     max__ = max(max(image)); disp(max__);
-    %img(img == min__) = -1000;
+    image(image == min__) = -1000;
     imshow(image,"Parent", ax,'Colormap',gray);caxis('auto');
     if n==1
         title(sprintf('Frame %d',n), 'Color','white');
@@ -127,7 +127,7 @@ if strcmpi(choice, 'Yes')
         %normalization
         min__ = min(min(image)); disp(min__);
         max__ = max(max(image)); disp(max__);
-        %img(img == min__) = -1000;
+        image(image == min__) = -1000;
         imshow(image,"Parent", ax,'Colormap',gray);caxis('auto');
         title(sprintf('Frame %d',n), 'Color','white');
         
@@ -166,7 +166,7 @@ else
     %normalization
     min__ = min(min(image)); disp(min__);
     max__ = max(max(image)); disp(max__);
-    %img(img == min__) = -1000;
+    image(image == min__) = -1000;
     figure();
     imshow(image,'Colormap',gray);caxis('auto');
     title(sprintf('Frame %d',frameNum), 'Color','white');
@@ -179,3 +179,48 @@ end
 
 %%
 
+
+
+
+
+%%
+
+
+
+for n = 1:50
+        info = dicominfo(fullfile(path,files(n).name), UseDictionaryVR=true);
+        slope = info.RescaleSlope;
+        intercept = info.RescaleIntercept;
+        image = dicomread(fullfile(path,files(n).name));
+        image = double(image);
+        image = slope*image + intercept ;
+        stackimg(n,:,:) = image;
+        disp(n);
+        %normalization
+  
+        %img(img == min__) = -1000;
+
+
+end   
+    
+
+
+min__ = min(min(min(stackimg)));
+max__ = max(max(max(stackimg)));
+stackimg(stackimg == min__) = -1000;
+
+
+figure();
+imshow(squeeze(stackimg(50,:,:)),'Colormap',gray);
+caxis('auto'); colorbar
+
+figure();
+imshow(rot90(squeeze(stackimg(10,:,:)),0),'Colormap',gray);
+caxis('auto'); colorbar
+figure();
+imshow(rot90(squeeze(stackimg(:,150,:)),0),'Colormap',gray);
+caxis('auto'); colorbar
+figure();
+imshow(rot90(squeeze(stackimg(:,:,256)),0),'Colormap',gray);
+caxis('auto'); colorbar
+%%
