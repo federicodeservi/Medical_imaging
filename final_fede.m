@@ -177,7 +177,6 @@ else
     set(gcf, 'Position', get(0, 'Screensize'));
 end
 
-%%
 
 
 
@@ -185,7 +184,7 @@ end
 
 %%
 
-
+% NON CI INTERESSA PER ORA
 
 for n = 1:50
         info = dicominfo(fullfile(path,files(n).name), UseDictionaryVR=true);
@@ -224,3 +223,159 @@ figure();
 imshow(rot90(squeeze(stackimg(:,:,256)),0),'Colormap',gray);
 caxis('auto'); colorbar
 %%
+% SEGMENTATION MANUAL 1
+
+% Reading the information about the patient and the PET acquisition
+info = dicominfo(fullfile(path,files(17).name));
+
+% Store slope and intercept
+slope = info.RescaleSlope;
+intercept = info.RescaleIntercept;
+
+% Load a single slice of the 3-dimensional acquisition
+img = dicomread(fullfile(path,files(17).name));
+img = double(img);
+
+% y = slope*x + intercept
+img = slope*img + intercept;
+
+% Visualize the image
+figure();
+imshow(img); caxis('auto'); colorbar
+hold on;
+    rectangle('Position',[x, y, w, h],...
+             'LineWidth',0.2,'LineStyle','-', 'EdgeColor', 'r');
+%%
+% SEGMENTATION MANUAL 2
+
+% Voxel dimension is saved in the fields PixelSpacing (x,y) and
+% SliceThickness (z)
+dimx = info.PixelSpacing(1);
+dimy = info.PixelSpacing(2);
+dimz = info.SliceThickness;
+
+% Calculate the dimension of a single voxel [mm^3]
+dim__voxel = dimx*dimy*dimz;
+
+%%
+% SEGMENTATION MANUAL 3
+
+selected_img=img;
+
+figure();
+imshow(img, 'Colormap',gray);
+caxis('auto'); colorbar;
+h = imfreehand;
+
+% Position of the ROI
+% x- and y-coordinates, respectively, of the n points along the boundary
+% of the freehand region
+pos = getPosition(h); 
+
+% Creating and visualizing an image that contains only the selected ROI
+mask = createMask(h);
+img__roi = selected_img.*mask;
+
+figure();
+imshow(img__roi,[],'Colormap',gray);
+caxis('auto'); colorbar;
+
+%%% con treshold
+% Calculate the threshold
+max__roi = max(max(img__roi));
+threshold = 0.3 * max__roi;
+
+% Apply the threshold to the ROI
+img__roithreshold = img__roi;
+img__roithreshold(img__roithreshold > threshold) = 0;
+figure();
+imshow(img__roithreshold,[],'Colormap',gray);
+
+% Apply the threshold to the entire image
+img__threshold = selected_img;
+img__threshold(img__threshold > threshold) = 0;
+figure();
+imshow(img__threshold,[],'Colormap',gray);
+
+% Modify the threshold
+threshold = 0.3 * max__roi;
+img__threshold = selected_img;
+img__threshold(img__threshold > threshold) = 0;
+figure();
+imshow(img__threshold,[],'Colormap',gray);
+
+% Calculate the volume of the selected ROI through the aplication of an
+% intensity filter
+% Calculate the number of voxels
+nvoxel = nnz(img__roithreshold > 0);
+% Alternative: nvoxel = sum(img__threshold(:) > 0);
+
+% Calculate the volume, knowing the dimension of a single voxel in mm^3
+volume = nvoxel * dim__voxel;
+disp(['Il volume del cancro è pari a ' num2str(round(volume/1000))...
+    ' cc.']);
+
+
+%%
+%KMEANS (NON CI INTERESSA PER ORA)
+% Use k-means clustering to perform automatic segmentation
+xk = x -10;
+yk = y-10;
+wk = w + 10;
+hk = h + 10;
+imgcrop = imcrop(img,[xk yk wk hk]);
+
+reshaped__img = reshape(imgcrop,[size(imgcrop,1)*size(imgcrop,2),1]);
+idx = kmeans(reshaped__img,2,'replicate',5);
+idx__reshaped = reshape(idx,[size(imgcrop,1),size(imgcrop,2)]);
+figure; imshow(idx__reshaped); caxis('auto')
+
+% We have now two images to display: the background image and the
+% segmented ROI.
+% In order to plot these two images as superimposed on the same figure,
+% we should create a single image with values on two different color
+% scales (in order to make them visually distinguishable).
+% This image will then be plotted using two different colormaps stacked one
+% over the other. Let us prepare a two-maps-in-one colormap by stacking a
+% jet colormap and a hot colormap.
+cmap__1 = colormap(gray);
+cmap__2 = colormap(jet);
+new__cmap = [cmap__1; cmap__2];
+
+% Let us prepare the new image to be plotted. This new image will have the
+% original-image values outside our thresholded ROI, and the new values
+% inside the thresholded ROI.
+% The new values will simply be the original values plus the maximum of the
+% original image.
+background__img = img./max(max(img));
+background__level = mode(idx);
+new__img = background__img;
+for i = 1:size(img,1)
+    for j = 1:size(img,2)
+        if idx__reshaped(i,j) ~= background__level
+            new__img(i,j) = 1.0001 + background__img(i,j);
+        end
+    end
+end
+
+% Plot the resulting image using the new colormap
+imshow(new__img); colormap(new__cmap); caxis('auto'); colorbar
+
+hold on;
+    rectangle('Position',[x, y, w, h],...
+             'LineWidth',0.2,'LineStyle','-', 'EdgeColor', 'r');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
