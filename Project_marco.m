@@ -24,7 +24,7 @@ diary on
 cd '../data/single-patient/CT/dicom';
 
 % Reading the information about the patient and the PET acquisition
-info = dicominfo('1-100');
+info = dicominfo('1-14');
 
 % Printing the name of the patient
 info.PatientName
@@ -49,7 +49,7 @@ slope = info.RescaleSlope;
 intercept = info.RescaleIntercept;
 
 % Load a single slice of the 3-dimensional acquisition
-img = dicomread('1-100');
+img = dicomread('1-14');
 img = double(img);
 
 % Multiply by the scaling factor
