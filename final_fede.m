@@ -199,6 +199,14 @@ frameNumSeg = str2double(inputdlg(dlgTitle3,dlgQuestion3,1,{'1'}));
 contCond=1;
 completedCond=0;
 totVolume = 0;
+
+%test ----------
+pathLesionsDCMpart = strsplit(path, '2.000000-ThoraxRoutine  5.0.0  B70f-98620');
+pathLesionsDCM = strcat(pathLesionsDCMpart, 'Identified_lesions');
+
+%test ----------
+
+
 while contCond==1
     if frameNumSeg > 50
        %popup 
@@ -237,9 +245,14 @@ while contCond==1
             % Creating and visualizing an image that contains only the selected ROI
             mask = createMask(h);
             img__roi = selected_img.*mask;
-            % test
-            dicomwrite(img_roi, 'test.dcm');
-            %test
+            % test -----------------------------------------------
+            counter = 0;
+            dicomwrite(img__roi, (sprintf('lesion_slice%d.dcm', (counter))));
+            if ~exist(strcat(pathLesionsDCM{1}, 'dir'))
+               mkdir(strcat(pathLesionsDCM{1}))
+            end
+            movefile(filepathlesion, strcat(pathLesionsDCM{1}, '\', sprintf('lesion_slice%d.dcm', (counter))));
+            %test--------------------------------------------------
             max__roi = max(max(img__roi));
             threshold = 0.8 * max__roi;
             img__roithreshold = img__roi;
@@ -261,10 +274,12 @@ while contCond==1
                 contCond=0;
             end
             frameNumSeg = frameNumSeg+1;
+            counter = counter+1;
 
         elseif strcmpi(segChoice, 'Proceed')
             close(gcf);
             frameNumSeg =frameNumSeg+1;
+            counter = counter+1;
         else 
             contCond=0;
         end
@@ -278,8 +293,41 @@ if completedCond ==1
 end
         
 
-%%
+%% FEATURE EXTRACTION
 
+% Reading the information about the patient and the PET acquisition
+info = dicominfo('lesion_slice0');
+
+% Load a single slice of the 3-dimensional acquisition
+img = dicomread('lesion_slice0');
+img = double(img);
+
+PixelDimensions=[0.6895, 0.6895, 5];
+
+% Volume of the lesion
+lesion__voxels = sum(img~=0,'all'); % Returns the number of voxels with non-zero values
+lesion__volume = lesion__voxels * dim__voxel;
+lesion__volume = double(lesion__volume);
+
+
+% Surface (area) of the lesion
+[lesion__area, surf_mat] = compute__surface(img, double(PixelDimensions));
+lesion__area = double(lesion__area);
+
+% Spherical disproportion
+R_equiv = (lesion__volume*3/(4*pi))^(1/3);
+spherical__disproportion = lesion__area/(4*pi*(R_equiv)^2);
+
+% Sphericity
+sphericity = ((pi^(1/3))*((6*lesion__volume)^(2/3)))/lesion__area;
+
+% Surface-to-volume ratio
+surfacevolume__ratio = lesion__area/lesion__volume;
+
+
+
+%%
+%________________________________________________________________________________________________________________
 % NON CI INTERESSA PER ORA
 
 for n = 1:50
@@ -318,6 +366,7 @@ caxis('auto'); colorbar
 figure();
 imshow(rot90(squeeze(stackimg(:,:,256)),0),'Colormap',gray);
 caxis('auto'); colorbar
+
 %%
 %KMEANS (NON CI INTERESSA PER ORA)
 % Use k-means clustering to perform automatic segmentation
