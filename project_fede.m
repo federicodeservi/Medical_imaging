@@ -1,6 +1,6 @@
 %% HN1280
 % Reading the information about the patient and the PET acquisition
-info = dicominfo('1-070', UseDictionaryVR=true);
+info = dicominfo('1-01', UseDictionaryVR=true);
 
 % Printing the name of the patient
 info.PatientName
@@ -23,7 +23,7 @@ dim__voxel = dimx*dimy*dimz;
 % The scale factor is saved in the field called "RescaleSlope"
 slope = info.RescaleSlope;
 % Load a single slice of the 3-dimensional acquisition
-img = dicomread('1-070');
+img = dicomread('1');
 img = double(img);
 intercept = info.RescaleIntercept;
 % Multiply by the scaling factor
