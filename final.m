@@ -1,4 +1,3 @@
-
 %%
 % Multiple with for loop
 clear;
@@ -24,10 +23,16 @@ prompt = [sprintf(names2Prompt), sprintf('\n'),sprintf('\n'), 'Please enter the 
 name = 'Input patient number';
 patNum = str2double(inputdlg(prompt,name,1,{'1'}));
 
-
-
-
 patID = nameFolds{patNum};
+disp(patID)
+
+popupSel = strcat('Patient selected: ',{' '}, patID(9:end));
+selectionPat = msgbox(popupSel);
+pause(2);
+if ishandle(selectionPat)
+    close(selectionPat);
+end
+
 pathMain = strcat(root,'\',patID);
 
 d2 = dir(pathMain);
@@ -60,6 +65,7 @@ h=ymax-ymin;
 x = xmin;
 y=ymin;
 
+%VISUALIZATIONS
 
 % how many imgs for patient?
 n_imgs=9;
@@ -87,9 +93,9 @@ for n = 1:n_imgs
     image(image == min__) = -1000;
     imshow(image,"Parent", ax,'Colormap',gray);caxis('auto');
     if n==1
-        title(sprintf('Frame %d',n), 'Color','white');
+        title(sprintf('Slice %d',n), 'Color','white');
     else
-        title(sprintf('Frame %d',(n-1)*5), 'Color','white');
+        title(sprintf('Slice %d',(n-1)*5), 'Color','white');
     end
     hold on;
     rectangle('Position',[x, y, w, h],...
@@ -105,7 +111,7 @@ set(gcf, 'Position', get(0, 'Screensize'));
 pause(2);
 
 dlgTitle    = 'User Question';
-dlgQuestion = 'Do you want to visualize all 50 frames?';
+dlgQuestion = 'Do you want to visualize all 50 slices?';
 choice = questdlg(dlgQuestion,dlgTitle,'Yes','No', 'Yes');
 
 if strcmpi(choice, 'Yes')
@@ -129,7 +135,7 @@ if strcmpi(choice, 'Yes')
         max__ = max(max(image)); disp(max__);
         image(image == min__) = -1000;
         imshow(image,"Parent", ax,'Colormap',gray);caxis('auto');
-        title(sprintf('Frame %d',n), 'Color','white');
+        title(sprintf('Slice %d',n), 'Color','white');
         
         hold on;
         rectangle('Position',[x, y, w, h],...
@@ -144,8 +150,8 @@ end
 
 pause(2);
 
-dlgTitle2    = 'Do you want to visualize a specific frame (1 to 50)? Enter 0 to close and exit.';
-dlgQuestion2 = 'Frame Number';
+dlgTitle2    = 'Do you want to visualize a specific slice (1 to 50)? Enter 0 to close and exit.';
+dlgQuestion2 = 'Slice Number';
 frameNum = str2double(inputdlg(dlgTitle2,dlgQuestion,1,{'1'}));
 
 if frameNum==0
@@ -169,7 +175,7 @@ else
     image(image == min__) = -1000;
     figure();
     imshow(image,'Colormap',gray);caxis('auto');
-    title(sprintf('Frame %d',frameNum), 'Color','white');
+    title(sprintf('Slice %d',frameNum), 'Color','white');
 
     hold on;
     rectangle('Position',[x, y, w, h],...
@@ -177,50 +183,94 @@ else
     set(gcf, 'Position', get(0, 'Screensize'));
 end
 
+
+
+
+
+
+
 %%
+% SEGMENTATION AUTOMATIC 
 
+dlgTitle3    = 'From which slice do you want to start for segmentation?';
+dlgQuestion3 = 'Slice Number';
+frameNumSeg = str2double(inputdlg(dlgTitle3,dlgQuestion3,1,{'1'}));
 
-
-
-
-%%
-
-
-
-for n = 1:50
-        info = dicominfo(fullfile(path,files(n).name), UseDictionaryVR=true);
+contCond=1;
+completedCond=0;
+totVolume = 0;
+while contCond==1
+    if frameNumSeg > 50
+       %popup 
+        errormsg = sprintf('No such slice available. Select a lower number\n');
+        h = msgbox(errormsg);
+        contCond=0;
+        
+    else
+        info = dicominfo(fullfile(path,files(frameNumSeg).name));
         slope = info.RescaleSlope;
         intercept = info.RescaleIntercept;
-        image = dicomread(fullfile(path,files(n).name));
-        image = double(image);
-        image = slope*image + intercept ;
-        stackimg(n,:,:) = image;
-        disp(n);
-        %normalization
-  
-        %img(img == min__) = -1000;
+        img = dicomread(fullfile(path,files(frameNumSeg).name));
+        img = double(img);
+        img = slope*img + intercept;
+        dimx = info.PixelSpacing(1);
+        dimy = info.PixelSpacing(2);
+        dimz = info.SliceThickness;
+        dim__voxel = dimx*dimy*dimz;
+        selected_img=img;
+        figure();
+        imshow(img, 'Colormap',gray);
+        caxis('auto'); colorbar;
+        title(sprintf('Slice %d',frameNumSeg), 'Color','white');
+        set(gcf, 'Position', get(0, 'Screensize'));
 
+        dlgTitle4    = 'User Question';
+        dlgQuestion4 = 'Do you want to segment thia frame or proceed to the next one?';
+        segChoice = questdlg(dlgQuestion4,dlgTitle4,'Segment','Proceed', 'Exit', "Exit");
 
-end   
+        if strcmpi(segChoice, 'Segment')
+            h = imfreehand;
+            % Position of the ROI
+            % x- and y-coordinates, respectively, of the n points along the boundary
+            % of the freehand region
+            pos = getPosition(h); 
+            % Creating and visualizing an image that contains only the selected ROI
+            mask = createMask(h);
+            img__roi = selected_img.*mask;
+            max__roi = max(max(img__roi));
+            threshold = 0.8 * max__roi;
+            img__roithreshold = img__roi;
+            img__roithreshold(img__roithreshold > threshold) = 0;
+            nvoxel = nnz(img__roithreshold > 0);
+
+            % Calculate the volume, knowing the dimension of a single voxel in mm^3
+            slice_volume = nvoxel * dim__voxel;
+            totVolume = totVolume + slice_volume;
+            completedCond=1;
+            dlgTitle5    = 'User Question';
+            dlgQuestion5 = 'Do you want to visualize and segment the following frame?';
+            choice = questdlg(dlgQuestion5,dlgTitle5,'Yes','No', 'Yes');
+            close(gcf);
+
+            if strcmpi(choice, 'Yes')
+                contCond=1;
+            else
+                contCond=0;
+            end
+            frameNumSeg = frameNumSeg+1;
+
+        elseif strcmpi(segChoice, 'Proceed')
+            close(gcf);
+            frameNumSeg =frameNumSeg+1;
+        else 
+            contCond=0;
+        end
+    end
     
+end
 
-
-min__ = min(min(min(stackimg)));
-max__ = max(max(max(stackimg)));
-stackimg(stackimg == min__) = -1000;
-
-
-figure();
-imshow(squeeze(stackimg(50,:,:)),'Colormap',gray);
-caxis('auto'); colorbar
-
-figure();
-imshow(rot90(squeeze(stackimg(10,:,:)),0),'Colormap',gray);
-caxis('auto'); colorbar
-figure();
-imshow(rot90(squeeze(stackimg(:,150,:)),0),'Colormap',gray);
-caxis('auto'); colorbar
-figure();
-imshow(rot90(squeeze(stackimg(:,:,256)),0),'Colormap',gray);
-caxis('auto'); colorbar
-%%
+if completedCond ==1
+    popupfinal = sprintf('Estimated total lesion volume: %d cc', (round(totVolume/1000)) );
+    result = msgbox(popupfinal);
+end
+        

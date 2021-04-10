@@ -23,16 +23,10 @@ prompt = [sprintf(names2Prompt), sprintf('\n'),sprintf('\n'), 'Please enter the 
 name = 'Input patient number';
 patNum = str2double(inputdlg(prompt,name,1,{'1'}));
 
+
+
+
 patID = nameFolds{patNum};
-disp(patID)
-
-popupSel = strcat('Patient selected: ',{' '}, patID(9:end));
-selectionPat = msgbox(popupSel);
-pause(2);
-if ishandle(selectionPat)
-    close(selectionPat);
-end
-
 pathMain = strcat(root,'\',patID);
 
 d2 = dir(pathMain);
@@ -65,7 +59,6 @@ h=ymax-ymin;
 x = xmin;
 y=ymin;
 
-%VISUALIZATIONS
 
 % how many imgs for patient?
 n_imgs=9;
@@ -93,9 +86,9 @@ for n = 1:n_imgs
     image(image == min__) = -1000;
     imshow(image,"Parent", ax,'Colormap',gray);caxis('auto');
     if n==1
-        title(sprintf('Slice %d',n), 'Color','white');
+        title(sprintf('Frame %d',n), 'Color','white');
     else
-        title(sprintf('Slice %d',(n-1)*5), 'Color','white');
+        title(sprintf('Frame %d',(n-1)*5), 'Color','white');
     end
     hold on;
     rectangle('Position',[x, y, w, h],...
@@ -111,7 +104,7 @@ set(gcf, 'Position', get(0, 'Screensize'));
 pause(2);
 
 dlgTitle    = 'User Question';
-dlgQuestion = 'Do you want to visualize all 50 slices?';
+dlgQuestion = 'Do you want to visualize all 50 frames?';
 choice = questdlg(dlgQuestion,dlgTitle,'Yes','No', 'Yes');
 
 if strcmpi(choice, 'Yes')
@@ -135,7 +128,7 @@ if strcmpi(choice, 'Yes')
         max__ = max(max(image)); disp(max__);
         image(image == min__) = -1000;
         imshow(image,"Parent", ax,'Colormap',gray);caxis('auto');
-        title(sprintf('Slice %d',n), 'Color','white');
+        title(sprintf('Frame %d',n), 'Color','white');
         
         hold on;
         rectangle('Position',[x, y, w, h],...
@@ -150,8 +143,8 @@ end
 
 pause(2);
 
-dlgTitle2    = 'Do you want to visualize a specific slice (1 to 50)? Enter 0 to close and exit.';
-dlgQuestion2 = 'Slice Number';
+dlgTitle2    = 'Do you want to visualize a specific frame (1 to 50)? Enter 0 to close and exit.';
+dlgQuestion2 = 'Frame Number';
 frameNum = str2double(inputdlg(dlgTitle2,dlgQuestion,1,{'1'}));
 
 if frameNum==0
@@ -175,7 +168,7 @@ else
     image(image == min__) = -1000;
     figure();
     imshow(image,'Colormap',gray);caxis('auto');
-    title(sprintf('Slice %d',frameNum), 'Color','white');
+    title(sprintf('Frame %d',frameNum), 'Color','white');
 
     hold on;
     rectangle('Position',[x, y, w, h],...
@@ -190,10 +183,10 @@ end
 
 
 %%
-% SEGMENTATION AUTOMATIC 
+% SEGMENTATION AUTOMATIC 1
 
-dlgTitle3    = 'From which slice do you want to start for segmentation?';
-dlgQuestion3 = 'Slice Number';
+dlgTitle3    = 'From which frame do you want to start for segmentation?';
+dlgQuestion3 = 'Frame Number';
 frameNumSeg = str2double(inputdlg(dlgTitle3,dlgQuestion3,1,{'1'}));
 
 contCond=1;
@@ -202,7 +195,7 @@ totVolume = 0;
 while contCond==1
     if frameNumSeg > 50
        %popup 
-        errormsg = sprintf('No such slice available. Select a lower number\n');
+        errormsg = sprintf('No such frame available. Select a lower number\n');
         h = msgbox(errormsg);
         contCond=0;
         
@@ -221,7 +214,7 @@ while contCond==1
         figure();
         imshow(img, 'Colormap',gray);
         caxis('auto'); colorbar;
-        title(sprintf('Slice %d',frameNumSeg), 'Color','white');
+        title(sprintf('Frame %d',frameNumSeg), 'Color','white');
         set(gcf, 'Position', get(0, 'Screensize'));
 
         dlgTitle4    = 'User Question';
@@ -237,9 +230,6 @@ while contCond==1
             % Creating and visualizing an image that contains only the selected ROI
             mask = createMask(h);
             img__roi = selected_img.*mask;
-            % test
-            dicomwrite(img_roi, 'test.dcm');
-            %test
             max__roi = max(max(img__roi));
             threshold = 0.8 * max__roi;
             img__roithreshold = img__roi;
@@ -272,11 +262,105 @@ while contCond==1
     
 end
 
+%disp(['Estimated total lesion volume: ' num2str(round(totVolume/1000))...
+%    ' cc.']);
 if completedCond ==1
     popupfinal = sprintf('Estimated total lesion volume: %d cc', (round(totVolume/1000)) );
     result = msgbox(popupfinal);
 end
         
+%%
+% Reading the information about the patient and the PET acquisition
+info = dicominfo(fullfile(path,files(17).name));
+
+% Store slope and intercept
+slope = info.RescaleSlope;
+intercept = info.RescaleIntercept;
+
+% Load a single slice of the 3-dimensional acquisition
+img = dicomread(fullfile(path,files(17).name));
+img = double(img);
+
+% y = slope*x + intercept
+img = slope*img + intercept;
+
+% Visualize the image
+figure();
+imshow(img); caxis('auto'); colorbar
+hold on;
+    rectangle('Position',[x, y, w, h],...
+             'LineWidth',0.2,'LineStyle','-', 'EdgeColor', 'r');
+%%
+% SEGMENTATION MANUAL 2
+
+% Voxel dimension is saved in the fields PixelSpacing (x,y) and
+% SliceThickness (z)
+dimx = info.PixelSpacing(1);
+dimy = info.PixelSpacing(2);
+dimz = info.SliceThickness;
+
+% Calculate the dimension of a single voxel [mm^3]
+dim__voxel = dimx*dimy*dimz;
+
+%%
+% SEGMENTATION MANUAL 3
+
+selected_img=img;
+
+figure();
+imshow(img, 'Colormap',gray);
+caxis('auto'); colorbar;
+h = imfreehand;
+
+% Position of the ROI
+% x- and y-coordinates, respectively, of the n points along the boundary
+% of the freehand region
+pos = getPosition(h); 
+
+% Creating and visualizing an image that contains only the selected ROI
+mask = createMask(h);
+img__roi = selected_img.*mask;
+
+figure();
+imshow(img__roi,[],'Colormap',gray);
+caxis('auto'); colorbar;
+
+%%% con treshold
+% Calculate the threshold
+max__roi = max(max(img__roi));
+threshold = 0.3 * max__roi;
+
+% Apply the threshold to the ROI
+img__roithreshold = img__roi;
+img__roithreshold(img__roithreshold > threshold) = 0;
+figure();
+imshow(img__roithreshold,[],'Colormap',gray);
+
+% Apply the threshold to the entire image
+img__threshold = selected_img;
+img__threshold(img__threshold > threshold) = 0;
+figure();
+imshow(img__threshold,[],'Colormap',gray);
+
+% Modify the threshold
+threshold = 0.3 * max__roi;
+img__threshold = selected_img;
+img__threshold(img__threshold > threshold) = 0;
+figure();
+imshow(img__threshold,[],'Colormap',gray);
+
+% Calculate the volume of the selected ROI through the aplication of an
+% intensity filter
+% Calculate the number of voxels
+nvoxel = nnz(img__roithreshold > 0);
+% Alternative: nvoxel = sum(img__threshold(:) > 0);
+
+% Calculate the volume, knowing the dimension of a single voxel in mm^3
+volume = nvoxel * dim__voxel;
+disp(['Il volume del cancro è pari a ' num2str(round(volume/1000))...
+    ' cc.']);
+
+
 
 %%
 
