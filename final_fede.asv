@@ -189,7 +189,7 @@ end
 
 
 
-
+%%
 % SEGMENTATION AUTOMATIC 
 
 dlgTitle3    = 'From which slice do you want to start for segmentation?';
@@ -292,7 +292,7 @@ if completedCond ==1
 end
         
 
-% FEATURE EXTRACTION
+%% FEATURE EXTRACTION
 
 path = pathLesionsDCM{1};
 files = dir(fullfile(path,'*.dcm'));
@@ -306,11 +306,8 @@ spherical_disproportions=[];
 sphericities=[];
 surfacevolume__ratios=[];
 
-fs = waitbar(0,'Please wait. Saving info...', 'Position', [200,200,270,70]);
-fs.Color = 'white';
 
 for n = 1:size(files,1)
-    waitbar((n/size(files,1)),fs,'Saving your data');
     % Reading the information about the patient and the PET acquisition
     info = dicominfo(fullfile(path,files(n).name));
     % Load a single slice of the 3-dimensional acquisition
@@ -347,7 +344,6 @@ for n = 1:size(files,1)
     surfacevolume__ratios = [surfacevolume__ratios; surfacevolume__ratio];
     
 end
-close(fs);
 
 %to matrix
 
@@ -358,7 +354,7 @@ T = array2table(features);
 T.Properties.VariableNames(1:7) = {'sliceNum','volumes', 'areas', 'Rs', 'spherical_disproportions', 'sphericities', 'surfacevolume__ratios' };
 writetable(T,sprintf('%s_features.csv', patID(9:end)));
 
-filepathfeatures = strcat(pwd, '\', sprintf('%s_features.csv', patID(9:end)));
+filepathfeatures = strcat(pwd, '\', sprintf('%d_features.csv', patID(9:end)));
 
 pathFeatures = strsplit(root, 'Lung-PET-CT-Dx');
 pathFeatures = pathFeatures{1};
@@ -368,18 +364,16 @@ end
             
 movefile(filepathfeatures, strcat(pathFeatures,'\Features'));
 
-
 %%
 
 %groupby , sum e mean features
 
 
-% tot csv
 
 
 %%
 
-% Kmeans on tot csv
+% Kmeans
 
 
 
