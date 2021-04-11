@@ -7,7 +7,9 @@ clear;
 %Insert root folder
 root = 'C:\Users\feder\Desktop\Chest\manifest-1618047023244\Lung-PET-CT-Dx';
 %path for third-party libraries
-addpath(genpath('C:\Users\feder\Google Drive\Universita\Materie\Medical Imaging\code__esempi\thirdparty-libraries'));
+addpath(genpath('..\thirdparty-libraries'));
+addpath(genpath('.\thirdparty-libraries'));
+
 d = dir(root);
 isub = [d(:).isdir]; %# returns logical vector
 nameFolds = {d(isub).name}';
