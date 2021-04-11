@@ -409,10 +409,10 @@ end
 TotFeatures = [AllVol, AllArea, AllR, AllDispr, AllSpher, AllRatio];
 
 % to csv
-T = array2table(TotFeatures);
-T.newVar(:,1) = cellstr(AllIDs);
-T.Properties.VariableNames(1:7) = {'volumes', 'areas', 'Rs', 'spherical_disproportions', 'sphericities', 'surfacevolume__ratios' ,'PatID'};
-writetable(T,'tot_features.csv');
+TempTot = array2table(TotFeatures);
+TempTot.newVar(:,1) = cellstr(AllIDs);
+TempTot.Properties.VariableNames(1:7) = {'volumes', 'areas', 'Rs', 'spherical_disproportions', 'sphericities', 'surfacevolume__ratios' ,'PatID'};
+writetable(TempTot,'tot_features.csv');
 
 filepathfeaturestot = strcat(pwd, '\', 'tot_features.csv');
 
@@ -424,32 +424,30 @@ movefile(filepathfeaturestot, strcat(pathFeaturesTot,'\Features'));
 %%
 
 % Kmeans on tot csv
+TotFeaturesTable = readtable('tot_features.csv');
+TotFeatiresMatrix = table2array(TotFeaturesTable(:,1:6));
 
+n_clusters=3;
 
+idx=kmeans(TotFeatiresMatrix,n_clusters,'Replicates',10);
+TotFeaturesTableCluster = TotFeaturesTable;
+TotFeaturesTableCluster.Cluster(:,1) = idx;
 
 % Classificazione nel caso 
 
+min_vol = min(table2array(TotFeaturesTable(:,1)));
+max_vol = max(table2array(TotFeaturesTable(:,1)));
+median_treshold = median(table2array(TotFeaturesTable(:,1)));
 
+mask_low = TotFeaturesTableCluster.volumes < median_treshold;
+TotFeaturesTableCluster.Label(mask_low) = '0';
+mask_high = TotFeaturesTableCluster.volumes >= median_treshold;
+TotFeaturesTableCluster.Label(mask_high) = '1';
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+labels = TotFeaturesTableCluster.Label;
+SVMModel = fitcsvm(TotFeatiresMatrix,labels,'Standardize',true);
+CVSVMModel = crossval(SVMModel,'Holdout',0.3);
+supervised__accuracy = 1 - kfoldLoss(CVSVMModel);
 
 
 %%
