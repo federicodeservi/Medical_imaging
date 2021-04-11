@@ -370,12 +370,56 @@ movefile(filepathfeatures, strcat(pathFeatures,'\Features'));
 
 
 %%
+path =  strcat(pathFeatures,'\Features');
+files = dir(fullfile(path,'*.csv'));
 
-%groupby , sum e mean features
+AllIDs = [];
+AllVol=[];
+AllArea=[];
+AllR=[];
+AllDispr=[];
+AllSpher=[];
+AllRatio=[];
+
+for n = 1:size(files,1)
+    filneameTemp = files(n).name;
+    Temp = readtable(fullfile(path,filneameTemp));
+
+    TempID = files(n).name(1:5);
+    
+    VolSum = sum(Temp{:,2});
+    AreaMean = mean(Temp{:,3});
+    RMean = mean(Temp{:,4});
+    DisprMean = mean(Temp{:,5});
+    SpherMean = mean(Temp{:,6});
+    RatioMean = mean(Temp{:,7});
+    
+    AllIDs = [AllIDs; TempID];
+    AllVol = [AllVol; VolSum];
+    AllArea = [AllArea; AreaMean];
+    AllR = [AllR; RMean];
+    AllDispr = [AllDispr; DisprMean];
+    AllSpher = [AllSpher; SpherMean];
+    AllRatio = [AllRatio; RatioMean];
+
+end
 
 
 % tot csv
+TotFeatures = [AllVol, AllArea, AllR, AllDispr, AllSpher, AllRatio];
 
+% to csv
+T = array2table(TotFeatures);
+T.newVar(:,1) = cellstr(AllIDs);
+T.Properties.VariableNames(1:7) = {'volumes', 'areas', 'Rs', 'spherical_disproportions', 'sphericities', 'surfacevolume__ratios' ,'PatID'};
+writetable(T,'tot_features.csv');
+
+filepathfeaturestot = strcat(pwd, '\', 'tot_features.csv');
+
+pathFeaturesTot = strsplit(root, 'Lung-PET-CT-Dx');
+pathFeaturesTot = pathFeaturesTot{1};
+            
+movefile(filepathfeaturestot, strcat(pathFeaturesTot,'\Features'));
 
 %%
 
@@ -384,6 +428,27 @@ movefile(filepathfeatures, strcat(pathFeatures,'\Features'));
 
 
 % Classificazione nel caso 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
