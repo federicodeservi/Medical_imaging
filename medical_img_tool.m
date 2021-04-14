@@ -295,7 +295,7 @@ if completedCond ==1
     result = msgbox(popupfinal);
 end
         
-%%
+
 % FEATURE EXTRACTION
 
 path = pathLesionsDCM;
@@ -372,105 +372,3 @@ if ~exist(strcat(pathFeatures,'\Features'), 'dir')
 end
             
 movefile(filepathfeatures, strcat(pathFeatures,'\Features'));
-
-
-%% Creates a csv containing features for each patient analyzed
-
-path =  strcat(pathFeatures,'\Features');
-files = dir(fullfile(path,'*.csv'));
-
-AllIDs = [];
-AllVol=[];
-AllArea=[];
-AllR=[];
-AllDispr=[];
-AllSpher=[];
-AllRatio=[];
-
-for n = 1:size(files,1)
-    filneameTemp = files(n).name;
-    Temp = readtable(fullfile(path,filneameTemp));
-    disp(Temp);
-    TempID = files(n).name(1:5);
-    
-    VolSum = sum(table2array(Temp(:,2)));
-    AreaMean = mean(table2array(Temp(:,3)));
-    RMean = mean(table2array(Temp(:,4)));
-    DisprMean = mean(table2array(Temp(:,5)));
-    SpherMean = mean(table2array(Temp(:,6)));
-    RatioMean = mean(table2array(Temp(:,7)));
-    
-    AllIDs = [AllIDs; TempID];
-    AllVol = [AllVol; VolSum];
-    AllArea = [AllArea; AreaMean];
-    AllR = [AllR; RMean];
-    AllDispr = [AllDispr; DisprMean];
-    AllSpher = [AllSpher; SpherMean];
-    AllRatio = [AllRatio; RatioMean];
-
-end
-
-
-TotFeatures = [AllVol, AllArea, AllR, AllDispr, AllSpher, AllRatio];
-TempTot = array2table(TotFeatures);
-TempTot.newVar(:,1) = cellstr(AllIDs);
-TempTot.Properties.VariableNames(1:7) = {'volumes mm3', 'areas', 'Rs', 'spherical_disproportions', 'sphericities', 'surfacevolume__ratios' ,'PatID'};
-
-writetable(TempTot,'tot_features.csv');
-
-filepathfeaturestot = strcat(pwd, '\', 'tot_features.csv');
-
-pathFeaturesTot = strsplit(root, 'Lung-PET-CT-Dx');
-pathFeaturesTot = pathFeaturesTot{1};
-if ~exist(strcat(pathFeaturesTot,'\Tot_Features'), 'dir')
-      mkdir(strcat(pathFeaturesTot,'\Tot_Features'))
-end
-            
-movefile(filepathfeaturestot, strcat(pathFeaturesTot,'\Tot_Features'));
-
-%% Clustering using kmeans
-
-% Kmeans on tot csv
-TotFeaturesTable = readtable(strcat(pathFeaturesTot,'\Tot_Features\','tot_features.csv'));
-TotFeatiresMatrix = table2array(TotFeaturesTable(:,1:6));
-
-promptcl = [sprintf('Please enter the desired number of clsuters\n')];
-namecl = 'Input cluster number';
-n_clusters = str2double(inputdlg(promptcl,namecl,1,{'2'}));
-
-idx=kmeans(TotFeatiresMatrix,n_clusters,'Replicates',1000);
-TotFeaturesTableCluster = TotFeaturesTable;
-TotFeaturesTableCluster.Cluster(:,1) = idx;
-
-figcl = uifigure('Position',[500 500 840 360]);
-uitcl = uitable(figcl,'Data',TotFeaturesTableCluster);
-uitcl.Position = [20 20 800 320];
-figcl.Color = 'white';
-
-%% Classification
-
-%find median volume
-min_vol = min(table2array(TotFeaturesTable(:,1)));
-max_vol = max(table2array(TotFeaturesTable(:,1)));
-median_treshold = median(table2array(TotFeaturesTable(:,1)));
-
-%Assing label 0 if patient volume < median volume, 1 otherwise
-mask_low = TotFeaturesTableCluster.volumesMm3 < median_treshold;
-TotFeaturesTableCluster.Label(mask_low) = '0';
-mask_high = TotFeaturesTableCluster.volumesMm3 >= median_treshold;
-TotFeaturesTableCluster.Label(mask_high) = '1';
-
-%Popup label 
-figcl = uifigure('Position',[500 500 940 360]);
-uitcl = uitable(figcl,'Data',TotFeaturesTableCluster);
-uitcl.Position = [20 20 900 320];
-figcl.Color = 'white';
-
-
-%Model training
-labels = TotFeaturesTableCluster.Label;
-SVMModel = fitcsvm(TotFeatiresMatrix,labels,'Standardize',true);
-CVSVMModel = crossval(SVMModel,'Holdout',0.3);
-supervised__accuracy = 1 - kfoldLoss(CVSVMModel);
-
-%% Additional plots
