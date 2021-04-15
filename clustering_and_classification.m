@@ -140,7 +140,7 @@ if strcmpi(choice7, 'Yes')
         close(resultfit);
 
         %Popup label 
-        popupres = sprintf('KNN model accuracy: %s %% \nRandom Forest accuracy: %s %% \n', num2str(knn_acc*100), num2str(ctree_acc*100));
+        popupres = sprintf('KNN model accuracy: %s %% \Classifier Tree accuracy: %s %% \n', num2str(knn_acc*100), num2str(ctree_acc*100));
         resultres = msgbox(popupres);
         resultres.Color = 'white';
     else
@@ -158,7 +158,7 @@ if strcmpi(choice7, 'Yes')
         close(resultfit);
 
         %Popup label 
-        popupres = sprintf('KNN model accuracy: %s %% \nRandom Forest accuracy: %s %% \n', num2str(knn_acc*100), num2str(ctree_acc*100));
+        popupres = sprintf('KNN model accuracy: %s %% \nClassifier Tree accuracy: %s %% \n', num2str(knn_acc*100), num2str(ctree_acc*100));
         resultres = msgbox(popupres);
         resultres.Color = 'white';
     end
