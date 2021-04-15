@@ -9,6 +9,7 @@ root = 'C:\Users\feder\Desktop\Chest\manifest-1618047023244\Lung-PET-CT-Dx';
 %path for third-party libraries
 addpath(genpath('..\thirdparty-libraries'));
 addpath(genpath('.\thirdparty-libraries'));
+format long g;
 pathFeatures = strsplit(root, 'Lung-PET-CT-Dx');
 pathFeatures = pathFeatures{1};
 
@@ -116,30 +117,39 @@ dlgQuestion7 = 'Do you want to fit the models?';
 choice7 = questdlg(dlgQuestion7,dlgTitle7,'Yes','No', 'Yes');
 
 if strcmpi(choice7, 'Yes')
-    close(resultlda);
+    if ishandle(resultlda)
+        close(resultlda);
+    end
 
     %fit models 
     popupfit = sprintf('Model fitting...');
     resultfit = msgbox(popupfit);
     resultfit.Color = 'white';
     if n_clusters ==2
-        %SVM model
-        SVMModel = fitcsvm(TotFeaturesTableClusterNorm(:,idx_discrim),labels,'Standardize',true);
-        CVSVMModel = crossval(SVMModel,'Holdout',0.35);
-        svm_acc = 1 - kfoldLoss(CVSVMModel);
+        %KCNN model
+        KcnnModel = fitcknn(TotFeaturesTableClusterNorm(:,idx_discrim),labels);
+
+        CVKcnnModel = crossval(KcnnModel,'Holdout',0.35);
+        knn_acc = 1 - kfoldLoss(CVKcnnModel);
 
         %Classification tree
-        tcModel = fitctree(TotFeaturesTableClusterNorm(:,idx_discrim),labels);
+        tcModel = fitctree(TotFeaturesTableClusterNorm(:,idx_discrim),labels); 
         CVtcModel = crossval(tcModel,'Holdout',0.35);
         ctree_acc = 1 - kfoldLoss(CVtcModel);
 
         close(resultfit);
 
         %Popup label 
-        popupres = sprintf('SVM model accuracy: %d %% \nRandom Forest accuracy: %d %% \n', svm_acc*100, ctree_acc*100);
+        popupres = sprintf('KNN model accuracy: %s %% \nRandom Forest accuracy: %s %% \n', num2str(knn_acc*100), num2str(ctree_acc*100));
         resultres = msgbox(popupres);
         resultres.Color = 'white';
     else
+        %KCNN model
+        KcnnModel = fitcknn(TotFeaturesTableClusterNorm(:,idx_discrim),labels);
+
+        CVKcnnModel = crossval(KcnnModel,'Holdout',0.35);
+        knn_acc = 1 - kfoldLoss(CVKcnnModel);
+        
         %Classification tree
         tcModel = fitctree(TotFeaturesTableClusterNorm(:,idx_discrim),labels);
         CVtcModel = crossval(tcModel,'Holdout',0.35);
@@ -148,7 +158,7 @@ if strcmpi(choice7, 'Yes')
         close(resultfit);
 
         %Popup label 
-        popupres = sprintf('Random Forest accuracy: %d %% \n', ctree_acc*100);
+        popupres = sprintf('KNN model accuracy: %s %% \nRandom Forest accuracy: %s %% \n', num2str(knn_acc*100), num2str(ctree_acc*100));
         resultres = msgbox(popupres);
         resultres.Color = 'white';
     end
